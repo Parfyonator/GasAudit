@@ -5,7 +5,7 @@ import tomllib
 
 import streamlit as st
 
-from gasaudit.io import MI_TO_KM, load_rows
+from gasaudit.io import load_rows
 from gasaudit.model import Params, analyze, rates_from_norm, total_fuel
 from gasaudit.plots import plot_fuel_vs_town, plot_row_bands
 
@@ -47,13 +47,21 @@ else:
 
 # Per-row sliders, seeded from the example split (snap-to-target)
 st.subheader("Per-row town distance")
-if "town_values" not in st.session_state or st.button("Snap to target"):
+snap = st.button("Snap to target")
+if "town_values" not in st.session_state or snap:
     st.session_state.town_values = list(
         a.example if a.example is not None else [r.town_min for r in rows]
     )
 
 town_values = []
 for i, (r, (lo, hi)) in enumerate(zip(rows, a.swing)):
+    if r.town_max <= r.town_min + 1e-9:
+        st.write(
+            f"{r.label}  (total {r.total:.0f} {unit}, town fixed at "
+            f"{r.town_min:.0f} {unit} — no wiggle room)"
+        )
+        town_values.append(r.town_min)
+        continue
     seed = st.session_state.town_values[i] if i < len(st.session_state.town_values) else lo
     seed = min(max(seed, r.town_min), r.town_max)
     val = st.slider(
