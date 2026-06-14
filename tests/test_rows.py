@@ -2,7 +2,7 @@ import pytest
 from gasaudit.rows import (
     RowInput, to_unit, from_unit, clamp_town,
     RowSegments, row_segments, totals,
-    to_model_rows, add_row, update_row, delete_row, move_up, move_down,
+    to_model_rows, add_row, update_row, delete_row, move_up, move_down, rebalance,
     bar_html,
     computed_table_df, input_csv_df, rows_from_csv,
 )
@@ -110,6 +110,32 @@ def test_move_up_down_and_boundaries():
     assert [r.label for r in rows] == ["c", "a", "b"]
     move_down(rows, 2) # boundary no-op
     assert [r.label for r in rows] == ["c", "a", "b"]
+
+
+def test_rebalance_preserves_sum_proportionally():
+    # index 0 was raised 20->50 (sum now 150); lock target is the old total 120
+    out = rebalance([50.0, 40.0, 60.0], [100.0, 100.0, 100.0], 0, 120.0)
+    assert sum(out) == pytest.approx(120.0)
+    assert out[0] == pytest.approx(50.0)        # moved entry unchanged
+    assert out[1] == pytest.approx(28.0)        # 40 - 30*40/100
+    assert out[2] == pytest.approx(42.0)        # 60 - 30*60/100
+
+
+def test_rebalance_grows_others_when_moved_decreased():
+    # index 0 lowered 50->10 (sum now 110); target is old total 150
+    out = rebalance([10.0, 40.0, 60.0], [100.0, 100.0, 100.0], 0, 150.0)
+    assert sum(out) == pytest.approx(150.0)
+    assert out[0] == pytest.approx(10.0)
+    assert out[1] == pytest.approx(64.0)        # +40*60/100
+    assert out[2] == pytest.approx(76.0)        # +40*40/100
+
+
+def test_rebalance_pulls_moved_when_others_exhausted():
+    # others can only give 10 total; moved must come back so the total holds
+    out = rebalance([90.0, 5.0, 5.0], [100.0, 10.0, 10.0], 0, 20.0)
+    assert sum(out) == pytest.approx(20.0)
+    assert out[1] == pytest.approx(0.0) and out[2] == pytest.approx(0.0)
+    assert out[0] == pytest.approx(20.0)        # pulled back from 90
 
 
 def test_update_row_edits_and_reclamps():

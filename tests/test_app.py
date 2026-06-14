@@ -43,3 +43,21 @@ def test_snap_to_target_moves_sliders():
     snap[0].click().run()
     assert not at.exception
     assert any(s.value > 0 for s in at.slider), "Snap did not move the slider handles"
+
+
+def test_lock_total_keeps_sum_constant_when_one_slider_moves():
+    at = AppTest.from_file("app.py", default_timeout=30).run()
+    for ni in at.number_input:
+        if ni.label and "Refuels" in ni.label:
+            ni.set_value(98.0)  # make feasible so sliders auto-seed to a real split
+    at.run()
+    for tg in at.toggle:
+        if tg.label and "Lock" in tg.label:
+            tg.set_value(True)
+    at.run()
+    before = sum(s.value for s in at.slider)
+    s0 = at.slider[0]
+    s0.set_value(min(s0.value + 30.0, s0.max)).run()
+    assert not at.exception
+    after = sum(s.value for s in at.slider)
+    assert abs(after - before) < 0.5, f"lock broke: total town {before} -> {after}"

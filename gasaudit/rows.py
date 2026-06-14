@@ -137,6 +137,43 @@ def move_down(rows: list[RowInput], i: int) -> list[RowInput]:
     return rows
 
 
+def rebalance(values: list[float], maxima: list[float], moved_index: int,
+              target_sum: float) -> list[float]:
+    """Adjust all entries except `moved_index` so the total returns to `target_sum`,
+    keeping each within [0, maxima[j]].
+
+    Used by the "lock total" mode: when one day's town split moves, the others shift to
+    keep the grand total town distance (hence total fuel) constant. The needed change is
+    spread proportionally — to current value when the others must shrink, to remaining
+    capacity when they must grow. If the others can't absorb it all, the moved entry is
+    pulled back so the total is preserved exactly when possible.
+    """
+    out = [min(max(v, 0.0), m) for v, m in zip(values, maxima)]
+    others = [j for j in range(len(out)) if j != moved_index]
+    for _ in range(1000):
+        delta = sum(out) - target_sum
+        if abs(delta) <= 1e-9:
+            break
+        if delta > 0:  # others must shrink
+            pool = [j for j in others if out[j] > 1e-9]
+            weight = sum(out[j] for j in pool)
+            if weight <= 1e-9:
+                break
+            for j in pool:
+                out[j] = max(0.0, out[j] - delta * out[j] / weight)
+        else:  # others must grow
+            pool = [j for j in others if out[j] < maxima[j] - 1e-9]
+            weight = sum(maxima[j] - out[j] for j in pool)
+            if weight <= 1e-9:
+                break
+            for j in pool:
+                out[j] = min(maxima[j], out[j] + (-delta) * (maxima[j] - out[j]) / weight)
+    residual = sum(out) - target_sum
+    if abs(residual) > 1e-9:  # others exhausted: pull the moved entry back
+        out[moved_index] = min(max(out[moved_index] - residual, 0.0), maxima[moved_index])
+    return out
+
+
 def bar_html(seg: RowSegments) -> str:
     """Full-width labeled two-segment bar (red town, grey out), as inline-styled HTML.
 

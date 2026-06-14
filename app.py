@@ -132,14 +132,42 @@ def _add_row_dialog():
 def _edit_row_dialog(index):
     _row_form(index)
 
-# --- snap control ---
+
+def _locked_rebalance(moved_id):
+    """Slider on_change callback: when 'Lock total' is on, shift the other rows to keep the
+    grand total town distance (hence total fuel) constant. Runs before the rerun, so it may
+    modify other sliders' session_state."""
+    if not st.session_state.get("lock"):
+        return
+    u = st.session_state.get("prev_unit", unit)
+    movable = [r for r in st.session_state.rows
+               if R.to_unit(r.total_mi - r.min_highway_mi, u) > 1e-9]
+    ids = [id(r) for r in movable]
+    if moved_id not in ids:
+        return
+    keys = [f"town{i}" for i in ids]
+    values = [st.session_state[k] for k in keys]
+    maxima = [R.to_unit(r.total_mi - r.min_highway_mi, u) for r in movable]
+    prev = st.session_state.get("prev_town", {})
+    target = sum(prev.get(i, v) for i, v in zip(ids, values))  # total before this move
+    new_vals = R.rebalance(values, maxima, ids.index(moved_id), target)
+    for k, nv in zip(keys, new_vals):
+        st.session_state[k] = float(nv)
+
+# --- snap + lock controls (right-aligned) ---
 st.subheader("Per-row town / out-of-town split")
-if st.button("Snap to target") and a.example is not None:
+_, c_snap, c_lock = st.columns([0.6, 0.22, 0.18])
+if c_snap.button("Snap to target") and a.example is not None:
     for r, ex in zip(rows, a.example):
         r.town_mi = R.from_unit(ex, unit)
         R.clamp_town(r)
         st.session_state[f"town{id(r)}"] = float(R.to_unit(r.town_mi, unit))
     st.rerun()
+c_lock.toggle(
+    "🔒 Lock total", key="lock",
+    help="When on, moving one day's split shifts the other days to keep the total litres "
+         "(total fuel) constant.",
+)
 
 # --- per-row blocks ---
 # Widget keys use id(r) (stable per row object across reruns) so slider state stays
@@ -172,6 +200,7 @@ for i, r in enumerate(rows):
             val = st.slider(
                 "town", min_value=0.0, max_value=float(town_max),
                 key=f"town{id(r)}", label_visibility="collapsed",
+                on_change=_locked_rebalance, args=(id(r),),
             )
             r.town_mi = R.from_unit(val, unit)
         seg = R.row_segments(r, unit, rates)
@@ -183,6 +212,12 @@ for i, r in enumerate(rows):
             f"{R.to_unit(r.min_highway_mi, unit):.0f} {unit}"
         )
     c_total.markdown(f"**{seg.total_l:.1f} L**")
+
+# Baseline for the lock callback: the settled slider values at the end of each run.
+st.session_state.prev_town = {
+    id(r): st.session_state[f"town{id(r)}"]
+    for r in rows if f"town{id(r)}" in st.session_state
+}
 
 # --- add row (below the rows) ---
 if st.button("➕ Add row"):
