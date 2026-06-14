@@ -21,6 +21,8 @@ class Rates:
 
 
 def rates_from_norm(norm: float, uplift: float = 0.15) -> Rates:
+    if uplift <= 0:
+        raise ValueError(f"uplift must be positive, got {uplift}")
     base = norm / 100.0
     return Rates(base=base, town=base * (1 + uplift), highway=base * (1 - uplift))
 
@@ -40,12 +42,8 @@ class Row:
     label: str
     total: float            # odometer delta, in the norm's distance unit
     min_highway: float = 0.0
-    min_town: float = 0.0
+    town_min: float = 0.0
     route: str = ""
-
-    @property
-    def town_min(self) -> float:
-        return self.min_town
 
     @property
     def town_max(self) -> float:
@@ -55,7 +53,7 @@ class Row:
         if self.town_max < self.town_min - EPS:
             raise ValueError(
                 f"row {self.label!r}: min_highway ({self.min_highway}) + "
-                f"min_town ({self.min_town}) exceed total ({self.total})"
+                f"min_town ({self.town_min}) exceed total ({self.total})"
             )
         return self
 
@@ -141,7 +139,7 @@ def analyze(rows: list[Row], params: Params) -> Analysis:
         target = min(max(town_req, window[0]), window[1])
         example = example_distribution(rows, target)
     else:
-        swing = [(r.town_min, r.town_min) for r in rows]
+        swing = [(r.town_min, r.town_max) for r in rows]
         example = None
     return Analysis(
         rates=rates, total_dist=total_dist, consumed_fuel=consumed,

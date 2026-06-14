@@ -1,5 +1,8 @@
 import pytest
-from gasaudit.model import Rates, rates_from_norm
+from gasaudit.model import (
+    Rates, rates_from_norm, total_fuel, required_town, Row, feasible_window,
+    example_distribution, swing_room, Params, analyze,
+)
 
 
 def test_rates_from_norm_default_uplift():
@@ -17,7 +20,9 @@ def test_rates_from_norm_custom_uplift():
     assert r.highway == pytest.approx(0.19 * 0.80)
 
 
-from gasaudit.model import total_fuel, required_town
+def test_rates_from_norm_rejects_nonpositive_uplift():
+    with pytest.raises(ValueError):
+        rates_from_norm(20.0, uplift=0.0)
 
 
 def test_total_fuel_uses_only_total_town():
@@ -32,11 +37,8 @@ def test_required_town_inverts_total_fuel():
     assert required_town(r, 100.0, fuel) == pytest.approx(40.0)
 
 
-from gasaudit.model import Row, feasible_window
-
-
 def test_row_town_bounds():
-    r = Row(label="d1", total=100.0, min_highway=30.0, min_town=5.0)
+    r = Row(label="d1", total=100.0, min_highway=30.0, town_min=5.0)
     assert r.town_min == 5.0
     assert r.town_max == 70.0  # total - min_highway
 
@@ -56,7 +58,9 @@ def test_row_rejects_highway_over_total():
         Row(label="bad", total=10.0, min_highway=20.0).validate()
 
 
-from gasaudit.model import example_distribution
+def test_row_rejects_town_over_total():
+    with pytest.raises(ValueError):
+        Row(label="bad", total=10.0, town_min=15.0).validate()
 
 
 def test_example_distribution_hits_target_and_respects_bounds():
@@ -81,9 +85,6 @@ def test_example_distribution_zero_capacity():
     assert example_distribution(rows, 0.0) == pytest.approx([0.0])
 
 
-from gasaudit.model import swing_room
-
-
 def test_swing_room_single_target_value():
     # Exact target (sum_lo == sum_hi). Each row's freedom is bounded by others.
     rows = [
@@ -105,9 +106,6 @@ def test_swing_room_band_widens_freedom():
     swing = swing_room(rows, 70.0, 90.0)  # total town in [70,90]
     # d1 high = min(100, 90 - 0) = 90 ; d1 low = max(0, 70 - 100) = 0
     assert swing[0] == (pytest.approx(0.0), pytest.approx(90.0))
-
-
-from gasaudit.model import Params, analyze
 
 
 def _rows():
@@ -141,6 +139,8 @@ def test_analyze_infeasible_too_much_town_needed():
     assert a.town_required == pytest.approx(200.0)
     assert a.feasible is False
     assert a.example is None
+    assert a.swing[0] == (pytest.approx(0.0), pytest.approx(80.0))
+    assert a.swing[1] == (pytest.approx(0.0), pytest.approx(60.0))
 
 
 def test_analyze_tolerance_opens_band():
@@ -151,3 +151,10 @@ def test_analyze_tolerance_opens_band():
     # band half-width = tol / spread = 0.3 / 0.06 = 5.0
     assert a.town_band[0] == pytest.approx(45.0)
     assert a.town_band[1] == pytest.approx(55.0)
+
+
+def test_analyze_empty_rows_is_infeasible():
+    p = Params(start_fuel=40.0, end_fuel=30.0, norm=20.0)
+    a = analyze([], p)
+    assert a.total_dist == pytest.approx(0.0)
+    assert a.feasible is False
