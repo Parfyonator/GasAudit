@@ -1,0 +1,13 @@
+# Period parameters for the gas-audit analysis.
+csv_path = "supp_mat/ПАЛИВО_ОБЛІК.csv"
+
+[fuel]
+start_fuel = 63.0      # litres at period start
+end_fuel = 40.0        # litres at period end (pinned target)
+refuels = 0.0          # total litres added during the period
+end_fuel_tol = 0.0     # ± litres rounding tolerance on end fuel
+
+[norm]
+value = 20.0           # litres per 100 distance-units
+unit = "mi"            # "mi" or "km" — the unit the norm is expressed in
+uplift = 0.15          # town = +uplift, highway = -uplift

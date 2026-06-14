@@ -1,0 +1,47 @@
+"""CLI: load config + CSV, run the analysis, print summary, write plots to output/."""
+from __future__ import annotations
+
+import os
+import tomllib
+
+import matplotlib
+matplotlib.use("Agg")
+
+from gasaudit.io import load_rows
+from gasaudit.model import Params, analyze
+from gasaudit.plots import (
+    plot_fuel_vs_town, plot_row_bands, plot_swing_widths, plot_tolerance_sensitivity,
+)
+from gasaudit.report import example_table, summary_text
+
+
+def main(config_path: str = "config.toml") -> None:
+    with open(config_path, "rb") as fh:
+        cfg = tomllib.load(fh)
+    unit = cfg["norm"]["unit"]
+    rows = load_rows(cfg["csv_path"], to_unit=unit)
+    params = Params(
+        start_fuel=cfg["fuel"]["start_fuel"],
+        end_fuel=cfg["fuel"]["end_fuel"],
+        refuels=cfg["fuel"]["refuels"],
+        end_fuel_tol=cfg["fuel"]["end_fuel_tol"],
+        norm=cfg["norm"]["value"],
+        norm_unit=unit,
+        uplift=cfg["norm"]["uplift"],
+    )
+    a = analyze(rows, params)
+    print(summary_text(a, work_unit=unit))
+    print()
+    print(example_table(rows, a, work_unit=unit))
+
+    os.makedirs("output", exist_ok=True)
+    plot_row_bands(rows, a).savefig("output/row_bands.png", dpi=120)
+    plot_fuel_vs_town(a).savefig("output/fuel_vs_town.png", dpi=120)
+    plot_swing_widths(rows, a).savefig("output/swing_widths.png", dpi=120)
+    plot_tolerance_sensitivity(rows, params).savefig(
+        "output/tolerance.png", dpi=120)
+    print("\nPlots written to output/")
+
+
+if __name__ == "__main__":
+    main()
