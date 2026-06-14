@@ -63,3 +63,20 @@ class Row:
 def feasible_window(rows: list[Row]) -> tuple[float, float]:
     """Min and max achievable TOTAL town distance across all rows."""
     return (sum(r.town_min for r in rows), sum(r.town_max for r in rows))
+
+
+def example_distribution(rows: list[Row], target_town: float) -> list[float] | None:
+    """A concrete per-row town split summing to target_town, each within its band.
+
+    Fills proportionally to each row's spare capacity above its town floor.
+    Returns None if target_town is outside the feasible window.
+    """
+    lo, hi = feasible_window(rows)
+    if target_town < lo - EPS or target_town > hi + EPS:
+        return None
+    caps = [r.town_max - r.town_min for r in rows]
+    total_cap = sum(caps)
+    remaining = target_town - lo
+    if total_cap <= EPS:
+        return [r.town_min for r in rows]
+    return [r.town_min + remaining * c / total_cap for r, c in zip(rows, caps)]

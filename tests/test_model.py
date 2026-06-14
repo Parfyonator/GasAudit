@@ -54,3 +54,28 @@ def test_feasible_window_sums_bounds():
 def test_row_rejects_highway_over_total():
     with pytest.raises(ValueError):
         Row(label="bad", total=10.0, min_highway=20.0).validate()
+
+
+from gasaudit.model import example_distribution
+
+
+def test_example_distribution_hits_target_and_respects_bounds():
+    rows = [
+        Row(label="d1", total=100.0, min_highway=30.0),  # town [0,70]
+        Row(label="d2", total=50.0, min_highway=10.0),   # town [0,40]
+    ]
+    split = example_distribution(rows, 55.0)
+    assert split is not None
+    assert sum(split) == pytest.approx(55.0)
+    for r, t in zip(rows, split):
+        assert r.town_min - 1e-9 <= t <= r.town_max + 1e-9
+
+
+def test_example_distribution_returns_none_when_infeasible():
+    rows = [Row(label="d1", total=100.0, min_highway=30.0)]  # town max 70
+    assert example_distribution(rows, 90.0) is None
+
+
+def test_example_distribution_zero_capacity():
+    rows = [Row(label="d1", total=10.0, min_highway=10.0)]  # town fixed at 0
+    assert example_distribution(rows, 0.0) == pytest.approx([0.0])
