@@ -34,3 +34,28 @@ def test_load_rows_converts_to_km_when_requested(tmp_path):
     rows = load_rows(str(f), to_unit="km")
     assert rows[0].total == pytest.approx(mi_to_km(127.0))
     assert rows[0].min_highway == pytest.approx(mi_to_km(80.0))
+
+
+from gasaudit.model import Row, Params, analyze
+from gasaudit.report import summary_text, example_table
+
+
+def test_summary_text_mentions_feasibility_and_target():
+    rows = [Row(label="d1", total=100.0, min_highway=20.0),
+            Row(label="d2", total=60.0, min_highway=0.0)]
+    p = Params(start_fuel=40.0, end_fuel=40.0 - 30.2, norm=20.0)
+    a = analyze(rows, p)
+    txt = summary_text(a, work_unit="mi")
+    assert "FEASIBLE" in txt.upper()
+    assert "50" in txt  # required town distance (miles) appears
+
+
+def test_example_table_has_row_per_day_and_km(tmp_path):
+    rows = [Row(label="d1", total=100.0, min_highway=20.0),
+            Row(label="d2", total=60.0, min_highway=0.0)]
+    p = Params(start_fuel=40.0, end_fuel=40.0 - 30.2, norm=20.0)
+    a = analyze(rows, p)
+    table = example_table(rows, a, work_unit="mi")
+    assert "d1" in table and "d2" in table
+    # km column present: town miles 0..80 -> some km value with 'km' header
+    assert "km" in table.lower()
