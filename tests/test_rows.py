@@ -138,6 +138,22 @@ def test_rebalance_pulls_moved_when_others_exhausted():
     assert out[0] == pytest.approx(20.0)        # pulled back from 90
 
 
+def test_rebalance_pool_restricts_to_rows_below():
+    # moved index 1 (raised 30->50, sum now 130); old total 110; only index 2 may absorb,
+    # index 0 (above) stays fixed.
+    out = rebalance([20.0, 50.0, 60.0], [100.0, 100.0, 100.0], 1, 110.0, pool=[2])
+    assert out[0] == pytest.approx(20.0)   # row above untouched
+    assert out[1] == pytest.approx(50.0)   # moved row kept
+    assert out[2] == pytest.approx(40.0)   # only this row absorbed the change
+    assert sum(out) == pytest.approx(110.0)
+
+
+def test_rebalance_empty_pool_pulls_moved_back():
+    # last row moved with nothing below to absorb -> moved reverts to hold the total
+    out = rebalance([20.0, 50.0, 80.0], [100.0, 100.0, 100.0], 2, 100.0, pool=[])
+    assert out == pytest.approx([20.0, 50.0, 30.0])
+
+
 def test_update_row_edits_and_reclamps():
     rows = [RowInput(label="d1", total_mi=100.0, min_highway_mi=20.0, town_mi=70.0)]
     update_row(rows, 0, "d1-new", 60.0, 50.0)

@@ -150,7 +150,9 @@ def _locked_rebalance(moved_id):
     maxima = [R.to_unit(r.total_mi - r.min_highway_mi, u) for r in movable]
     prev = st.session_state.get("prev_town", {})
     target = sum(prev.get(i, v) for i, v in zip(ids, values))  # total before this move
-    new_vals = R.rebalance(values, maxima, ids.index(moved_id), target)
+    moved_idx = ids.index(moved_id)
+    below = list(range(moved_idx + 1, len(ids)))  # only rows below absorb the change
+    new_vals = R.rebalance(values, maxima, moved_idx, target, pool=below)
     for k, nv in zip(keys, new_vals):
         st.session_state[k] = float(nv)
 
