@@ -105,3 +105,49 @@ def test_swing_room_band_widens_freedom():
     swing = swing_room(rows, 70.0, 90.0)  # total town in [70,90]
     # d1 high = min(100, 90 - 0) = 90 ; d1 low = max(0, 70 - 100) = 0
     assert swing[0] == (pytest.approx(0.0), pytest.approx(90.0))
+
+
+from gasaudit.model import Params, analyze
+
+
+def _rows():
+    return [
+        Row(label="d1", total=100.0, min_highway=20.0),  # town [0,80]
+        Row(label="d2", total=60.0, min_highway=0.0),    # town [0,60]
+    ]
+
+
+def test_analyze_feasible_basic():
+    rows = _rows()
+    # choose end fuel so that consumed fuel implies a town target inside the window
+    # rates: base .20, hwy .17, spread .06 ; total dist 160
+    # pick town target 50 -> fuel = .17*160 + .06*50 = 27.2 + 3.0 = 30.2
+    p = Params(start_fuel=40.0, end_fuel=40.0 - 30.2, refuels=0.0, norm=20.0)
+    a = analyze(rows, p)
+    assert a.total_dist == pytest.approx(160.0)
+    assert a.consumed_fuel == pytest.approx(30.2)
+    assert a.town_required == pytest.approx(50.0)
+    assert a.feasible is True
+    assert a.feasible_window == (pytest.approx(0.0), pytest.approx(140.0))
+    assert a.example is not None
+    assert sum(a.example) == pytest.approx(50.0)
+
+
+def test_analyze_infeasible_too_much_town_needed():
+    rows = _rows()  # max town 140
+    # demand town target 200 -> fuel = .17*160 + .06*200 = 27.2 + 12 = 39.2
+    p = Params(start_fuel=50.0, end_fuel=50.0 - 39.2, refuels=0.0, norm=20.0)
+    a = analyze(rows, p)
+    assert a.town_required == pytest.approx(200.0)
+    assert a.feasible is False
+    assert a.example is None
+
+
+def test_analyze_tolerance_opens_band():
+    rows = _rows()
+    p = Params(start_fuel=40.0, end_fuel=40.0 - 30.2, refuels=0.0, norm=20.0,
+               end_fuel_tol=0.3)
+    a = analyze(rows, p)
+    # band half-width = tol / spread = 0.3 / 0.06 = 5.0
+    assert a.town_band[0] == pytest.approx(45.0)
+    assert a.town_band[1] == pytest.approx(55.0)

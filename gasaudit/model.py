@@ -97,3 +97,54 @@ def swing_room(
         lo = max(r.town_min, sum_lo - others_max)
         out.append((lo, hi))
     return out
+
+
+@dataclass(frozen=True)
+class Params:
+    start_fuel: float
+    end_fuel: float
+    refuels: float = 0.0
+    norm: float = 20.0
+    norm_unit: str = "mi"     # "mi" or "km" — informational for the model
+    uplift: float = 0.15
+    end_fuel_tol: float = 0.0
+
+
+@dataclass(frozen=True)
+class Analysis:
+    rates: Rates
+    total_dist: float
+    consumed_fuel: float
+    town_required: float
+    town_band: tuple[float, float]        # from end_fuel_tol
+    feasible_window: tuple[float, float]
+    allowed: tuple[float, float]          # town_band intersect feasible_window
+    feasible: bool
+    swing: list[tuple[float, float]]      # per-row town range
+    example: list[float] | None           # per-row town split hitting town_required
+
+
+def analyze(rows: list[Row], params: Params) -> Analysis:
+    for r in rows:
+        r.validate()
+    rates = rates_from_norm(params.norm, params.uplift)
+    total_dist = sum(r.total for r in rows)
+    consumed = params.start_fuel + params.refuels - params.end_fuel
+    town_req = required_town(rates, total_dist, consumed)
+    tol_dist = params.end_fuel_tol / rates.spread
+    band = (town_req - tol_dist, town_req + tol_dist)
+    window = feasible_window(rows)
+    allowed = (max(band[0], window[0]), min(band[1], window[1]))
+    feasible = allowed[0] <= allowed[1] + EPS
+    if feasible:
+        swing = swing_room(rows, allowed[0], allowed[1])
+        target = min(max(town_req, window[0]), window[1])
+        example = example_distribution(rows, target)
+    else:
+        swing = [(r.town_min, r.town_min) for r in rows]
+        example = None
+    return Analysis(
+        rates=rates, total_dist=total_dist, consumed_fuel=consumed,
+        town_required=town_req, town_band=band, feasible_window=window,
+        allowed=allowed, feasible=feasible, swing=swing, example=example,
+    )
