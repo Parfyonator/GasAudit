@@ -80,3 +80,20 @@ def example_distribution(rows: list[Row], target_town: float) -> list[float] | N
     if total_cap <= EPS:
         return [r.town_min for r in rows]
     return [r.town_min + remaining * c / total_cap for r, c in zip(rows, caps)]
+
+
+def swing_room(
+    rows: list[Row], sum_lo: float, sum_hi: float
+) -> list[tuple[float, float]]:
+    """Per-row achievable town range, given the TOTAL town must lie in [sum_lo, sum_hi]
+    and other rows compensate within their own bounds."""
+    all_min = sum(r.town_min for r in rows)
+    all_max = sum(r.town_max for r in rows)
+    out: list[tuple[float, float]] = []
+    for r in rows:
+        others_min = all_min - r.town_min
+        others_max = all_max - r.town_max
+        hi = min(r.town_max, sum_hi - others_min)
+        lo = max(r.town_min, sum_lo - others_max)
+        out.append((lo, hi))
+    return out

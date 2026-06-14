@@ -79,3 +79,29 @@ def test_example_distribution_returns_none_when_infeasible():
 def test_example_distribution_zero_capacity():
     rows = [Row(label="d1", total=10.0, min_highway=10.0)]  # town fixed at 0
     assert example_distribution(rows, 0.0) == pytest.approx([0.0])
+
+
+from gasaudit.model import swing_room
+
+
+def test_swing_room_single_target_value():
+    # Exact target (sum_lo == sum_hi). Each row's freedom is bounded by others.
+    rows = [
+        Row(label="d1", total=100.0, min_highway=0.0),  # town [0,100]
+        Row(label="d2", total=100.0, min_highway=0.0),  # town [0,100]
+    ]
+    swing = swing_room(rows, 80.0, 80.0)  # total town must be 80
+    # d1 can be as low as 80-100=-> max(0,-20)=0, as high as min(100, 80-0)=80
+    assert swing[0][0] == pytest.approx(0.0)
+    assert swing[0][1] == pytest.approx(80.0)
+    assert swing[1] == swing[0]
+
+
+def test_swing_room_band_widens_freedom():
+    rows = [
+        Row(label="d1", total=100.0, min_highway=0.0),
+        Row(label="d2", total=100.0, min_highway=0.0),
+    ]
+    swing = swing_room(rows, 70.0, 90.0)  # total town in [70,90]
+    # d1 high = min(100, 90 - 0) = 90 ; d1 low = max(0, 70 - 100) = 0
+    assert swing[0] == (pytest.approx(0.0), pytest.approx(90.0))
