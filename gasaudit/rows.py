@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from gasaudit.io import MI_TO_KM
+import pandas as pd
+
+from gasaudit.io import MI_TO_KM, load_rows
 from gasaudit.model import Rates, Row
 
 
@@ -154,3 +156,57 @@ def bar_html(seg: RowSegments) -> str:
         f'<div style="min-width:74px;text-align:right;padding-left:12px;'
         f'font-weight:700;font-size:15px;">{seg.total_l:.1f} L</div></div>'
     )
+
+
+def rows_from_csv(path: str) -> list[RowInput]:
+    """Seed RowInputs from the CSV (miles); town_mi defaults to 0 (caller re-seeds)."""
+    model_rows = load_rows(path, to_unit="mi")
+    return [
+        RowInput(label=m.label, total_mi=m.total, min_highway_mi=m.min_highway, town_mi=0.0)
+        for m in model_rows
+    ]
+
+
+def computed_table_df(rows: list[RowInput], unit: str, rates: Rates) -> pd.DataFrame:
+    segs = [row_segments(r, unit, rates) for r in rows]
+    data = [
+        {
+            "date": s.label,
+            f"total {unit}": (s.town_mi + s.out_mi) if unit == "mi"
+            else (s.town_km + s.out_km),
+            f"town {unit}": s.town_mi if unit == "mi" else s.town_km,
+            "town km": s.town_km,
+            "town L": round(s.town_l, 2),
+            f"out {unit}": s.out_mi if unit == "mi" else s.out_km,
+            "out km": s.out_km,
+            "out L": round(s.out_l, 2),
+            "row L": round(s.total_l, 2),
+        }
+        for s in segs
+    ]
+    return pd.DataFrame(data)
+
+
+def input_csv_df(rows: list[RowInput]) -> pd.DataFrame:
+    """Re-importable CSV (10 columns, ';' on export) round-tripping through io.load_rows.
+
+    Columns 0..9: date, odo_start, odo_end, total_mi, route, town_mi, hwy_mi,
+    town_km, hwy_km, min_highway_mi. Odometer synthesized cumulatively from 0.
+    Totals must be (near-)integer to survive load_rows' int() parsing.
+    """
+    records = []
+    cursor = 0
+    for r in rows:
+        delta = int(round(r.total_mi))
+        odo_start, odo_end = cursor, cursor + delta
+        cursor = odo_end
+        out_mi = r.total_mi - r.town_mi
+        records.append([
+            r.label, odo_start, odo_end, delta, "",
+            round(r.town_mi, 1), round(out_mi, 1),
+            round(r.town_mi * MI_TO_KM, 1), round(out_mi * MI_TO_KM, 1),
+            round(r.min_highway_mi, 1),
+        ])
+    cols = ["date", "odo_start", "odo_end", "total_mi", "route",
+            "town_mi", "hwy_mi", "town_km", "hwy_km", "min_highway_mi"]
+    return pd.DataFrame(records, columns=cols)

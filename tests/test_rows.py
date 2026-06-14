@@ -4,6 +4,7 @@ from gasaudit.rows import (
     RowSegments, row_segments, totals,
     to_model_rows, add_row, delete_row, move_up, move_down,
     bar_html,
+    computed_table_df, input_csv_df, rows_from_csv,
 )
 
 
@@ -129,3 +130,42 @@ def test_bar_html_pure_town_row_has_no_out_segment():
     html = bar_html(seg)
     assert "width:100" in html or "width: 100" in html
     assert "out " not in html  # no out-of-town segment label
+
+
+from gasaudit.io import load_rows
+
+
+def test_computed_table_df_columns_and_values():
+    rates = rates_from_norm(20.0)
+    rows = [RowInput(label="d1", total_mi=100.0, min_highway_mi=20.0, town_mi=30.0)]
+    df = computed_table_df(rows, "mi", rates)
+    assert list(df.columns) == [
+        "date", "total mi", "town mi", "town km", "town L",
+        "out mi", "out km", "out L", "row L",
+    ]
+    assert df.iloc[0]["town mi"] == pytest.approx(30.0)
+    assert df.iloc[0]["out mi"] == pytest.approx(70.0)
+    assert df.iloc[0]["row L"] == pytest.approx(30.0 * 0.23 + 70.0 * 0.17)
+
+
+def test_input_csv_df_roundtrips_through_load_rows(tmp_path):
+    rows = [
+        RowInput(label="d1", total_mi=127.0, min_highway_mi=80.0, town_mi=47.0),
+        RowInput(label="d2", total_mi=53.0, min_highway_mi=0.0, town_mi=53.0),
+    ]
+    df = input_csv_df(rows)
+    f = tmp_path / "out.csv"
+    df.to_csv(f, index=False, sep=";")
+    reloaded = load_rows(str(f))
+    assert [r.label for r in reloaded] == ["d1", "d2"]
+    assert reloaded[0].total == pytest.approx(127.0)
+    assert reloaded[0].min_highway == pytest.approx(80.0)
+    assert reloaded[1].total == pytest.approx(53.0)
+
+
+def test_rows_from_csv_reads_real_file():
+    rows = rows_from_csv("supp_mat/ПАЛИВО_ОБЛІК.csv")
+    assert len(rows) >= 1
+    assert all(isinstance(r, RowInput) for r in rows)
+    assert rows[0].total_mi == pytest.approx(127.0)
+    assert all(r.town_mi == 0.0 for r in rows)  # seeded 0; app re-seeds to example
