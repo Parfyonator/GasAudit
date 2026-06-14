@@ -85,3 +85,38 @@ def totals(rows: list[RowInput], unit: str, rates: Rates) -> Totals:
     out_km = sum(s.out_km for s in segs)
     out_l = sum(s.out_l for s in segs)
     return Totals(town_mi, town_km, town_l, out_mi, out_km, out_l, town_l + out_l)
+
+
+def to_model_rows(rows: list[RowInput], unit: str) -> list[Row]:
+    return [
+        Row(label=r.label, total=to_unit(r.total_mi, unit),
+            min_highway=to_unit(r.min_highway_mi, unit), town_min=0.0)
+        for r in rows
+    ]
+
+
+def add_row(rows: list[RowInput], label: str, total_mi: float,
+            min_highway_mi: float) -> list[RowInput]:
+    row = RowInput(label=label, total_mi=total_mi,
+                   min_highway_mi=min(min_highway_mi, total_mi), town_mi=0.0)
+    clamp_town(row)
+    rows.append(row)
+    return rows
+
+
+def delete_row(rows: list[RowInput], i: int) -> list[RowInput]:
+    if 0 <= i < len(rows):
+        del rows[i]
+    return rows
+
+
+def move_up(rows: list[RowInput], i: int) -> list[RowInput]:
+    if 0 < i < len(rows):
+        rows[i - 1], rows[i] = rows[i], rows[i - 1]
+    return rows
+
+
+def move_down(rows: list[RowInput], i: int) -> list[RowInput]:
+    if 0 <= i < len(rows) - 1:
+        rows[i + 1], rows[i] = rows[i], rows[i + 1]
+    return rows

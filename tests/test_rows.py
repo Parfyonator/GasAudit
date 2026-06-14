@@ -1,5 +1,9 @@
 import pytest
-from gasaudit.rows import RowInput, to_unit, from_unit, clamp_town, RowSegments, row_segments, totals
+from gasaudit.rows import (
+    RowInput, to_unit, from_unit, clamp_town,
+    RowSegments, row_segments, totals,
+    to_model_rows, add_row, delete_row, move_up, move_down,
+)
 
 
 def test_to_from_unit_roundtrip():
@@ -63,3 +67,44 @@ def test_totals_aggregates_rows():
     assert t.grand_l == pytest.approx(t.town_l + t.out_l)
     assert t.town_l == pytest.approx((40.0 + 60.0) * 0.23)
     assert t.out_l == pytest.approx(60.0 * 0.17)
+
+
+from gasaudit.model import Row
+
+
+def test_to_model_rows_converts_units():
+    rows = [RowInput(label="d1", total_mi=100.0, min_highway_mi=20.0, town_mi=30.0)]
+    mr_mi = to_model_rows(rows, "mi")
+    assert isinstance(mr_mi[0], Row)
+    assert mr_mi[0].total == pytest.approx(100.0)
+    assert mr_mi[0].min_highway == pytest.approx(20.0)
+    mr_km = to_model_rows(rows, "km")
+    assert mr_km[0].total == pytest.approx(100.0 * 1.609344)
+    assert mr_km[0].min_highway == pytest.approx(20.0 * 1.609344)
+
+
+def test_add_row_appends_and_clamps():
+    rows = []
+    add_row(rows, "d1", 100.0, 30.0)
+    assert len(rows) == 1
+    assert rows[0].label == "d1"
+    assert rows[0].town_mi == pytest.approx(0.0)  # seeded 0, within [0,70]
+    assert rows[0].min_highway_mi == pytest.approx(30.0)
+
+
+def test_delete_row_removes_index():
+    rows = [RowInput("a", 10.0), RowInput("b", 20.0), RowInput("c", 30.0)]
+    delete_row(rows, 1)
+    assert [r.label for r in rows] == ["a", "c"]
+
+
+def test_move_up_down_and_boundaries():
+    rows = [RowInput("a", 1.0), RowInput("b", 2.0), RowInput("c", 3.0)]
+    move_up(rows, 2)
+    assert [r.label for r in rows] == ["a", "c", "b"]
+    move_down(rows, 0)
+    assert [r.label for r in rows] == ["c", "a", "b"]
+    move_up(rows, 0)   # boundary no-op
+    assert [r.label for r in rows] == ["c", "a", "b"]
+    move_down(rows, 2) # boundary no-op
+    assert [r.label for r in rows] == ["c", "a", "b"]
