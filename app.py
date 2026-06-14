@@ -142,11 +142,6 @@ for i, r in enumerate(rows):
         R.move_down(rows, i)
         st.rerun()
     with c_main:
-        st.caption(
-            f"{r.label} · total {R.to_unit(r.total_mi, unit):.0f} {unit} "
-            f"({r.total_mi * R.MI_TO_KM:.0f} km) · min highway "
-            f"{R.to_unit(r.min_highway_mi, unit):.0f} {unit}"
-        )
         # Reserve the bar's spot ABOVE the slider, but fill it AFTER reading the slider
         # so it reflects the new value on the same rerun (no extra click needed).
         bar_slot = st.empty()
@@ -154,6 +149,8 @@ for i, r in enumerate(rows):
         if town_max <= 1e-9:
             st.caption("town fixed at 0 — no wiggle room")
         else:
+            # Gap so the slider's floating value bubble sits below the bar, not over it.
+            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
             # On a mi/km toggle, max_value changes, so Streamlit re-IDs the widget and
             # re-seeds it from value= (canonical miles) — the toggle stays lossless.
             val = st.slider(
@@ -164,6 +161,12 @@ for i, r in enumerate(rows):
             r.town_mi = R.from_unit(val, unit)
         seg = R.row_segments(r, unit, rates)
         bar_slot.markdown(R.bar_html(seg), unsafe_allow_html=True)
+        # Row metadata under the slider (was above the bar, where it crowded it).
+        st.caption(
+            f"{r.label} · total {R.to_unit(r.total_mi, unit):.0f} {unit} "
+            f"({r.total_mi * R.MI_TO_KM:.0f} km) · min highway "
+            f"{R.to_unit(r.min_highway_mi, unit):.0f} {unit}"
+        )
     c_total.markdown(f"**{seg.total_l:.1f} L**")
 
 # --- add row (below the rows) ---
