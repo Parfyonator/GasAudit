@@ -156,6 +156,16 @@ def test_computed_table_df_columns_and_values():
     assert df.iloc[0]["row L"] == pytest.approx(30.0 * 0.23 + 70.0 * 0.17)
 
 
+def test_computed_table_df_empty_keeps_headers():
+    rates = rates_from_norm(20.0)
+    df = computed_table_df([], "mi", rates)
+    assert list(df.columns) == [
+        "date", "total mi", "town mi", "town km", "town L",
+        "out mi", "out km", "out L", "row L",
+    ]
+    assert len(df) == 0
+
+
 def test_input_csv_df_roundtrips_through_load_rows(tmp_path):
     rows = [
         RowInput(label="d1", total_mi=127.0, min_highway_mi=80.0, town_mi=47.0),

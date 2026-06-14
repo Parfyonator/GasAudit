@@ -132,6 +132,8 @@ for i, r in enumerate(rows):
         if town_max <= 1e-9:
             st.caption("town fixed at 0 — no wiggle room")
         else:
+            # On a mi/km toggle, max_value changes, so Streamlit re-IDs the widget and
+            # re-seeds it from value= (canonical miles) — the toggle stays lossless.
             val = st.slider(
                 "town", min_value=0.0, max_value=float(town_max),
                 value=float(min(R.to_unit(r.town_mi, unit), town_max)),

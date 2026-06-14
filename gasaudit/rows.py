@@ -185,7 +185,10 @@ def computed_table_df(rows: list[RowInput], unit: str, rates: Rates) -> pd.DataF
         }
         for s in segs
     ]
-    return pd.DataFrame(data)
+    # Pass explicit columns so an empty row list still exports a header row.
+    cols = ["date", f"total {unit}", f"town {unit}", "town km", "town L",
+            f"out {unit}", "out km", "out L", "row L"]
+    return pd.DataFrame(data, columns=cols)
 
 
 def input_csv_df(rows: list[RowInput]) -> pd.DataFrame:
