@@ -85,3 +85,15 @@ def test_all_plots_build_figures():
     ):
         assert fig is not None
         assert len(fig.axes) >= 1
+
+
+def test_plots_and_report_survive_infeasible():
+    rows = [Row(label="d1", total=100.0, min_highway=80.0),
+            Row(label="d2", total=60.0, min_highway=50.0)]
+    p = Params(start_fuel=50.0, end_fuel=5.0, norm=20.0)  # demands far more town than possible
+    a = analyze(rows, p)
+    assert not a.feasible and a.example is None
+    assert "INFEASIBLE" in summary_text(a, "mi")
+    assert "nan" in example_table(rows, a, "mi")
+    for fig in (plot_row_bands(rows, a), plot_fuel_vs_town(a), plot_swing_widths(rows, a)):
+        assert fig is not None

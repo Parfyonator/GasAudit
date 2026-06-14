@@ -33,8 +33,8 @@ def summary_text(a: Analysis, work_unit: str) -> str:
         else:
             short = lo - a.town_required
             lines.append(
-                f"  -> {short:.1f} {work_unit} too much town: raise min_highway "
-                f"or the report over-consumes."
+                f"  -> town floor exceeds the target by {short:.1f} {work_unit}: "
+                f"lower town_min on some rows, or the report under-consumes fuel."
             )
     return "\n".join(lines)
 

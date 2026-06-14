@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
-from gasaudit.model import Analysis, Params, Row, analyze, rates_from_norm, total_fuel
+from gasaudit.model import Analysis, Params, Row, rates_from_norm
 
 
 def plot_row_bands(rows: list[Row], a: Analysis):
