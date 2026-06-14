@@ -50,6 +50,7 @@ class RowSegments:
 
 
 def row_segments(row: RowInput, unit: str, rates: Rates) -> RowSegments:
+    # Note: normalizes row.town_mi in place (idempotent) so segment math can't go out of range.
     clamp_town(row)
     town_mi = row.town_mi
     out_mi = row.total_mi - row.town_mi
@@ -129,7 +130,7 @@ def bar_html(seg: RowSegments) -> str:
     town_pct = round(seg.town_frac * 100)
     out_pct = 100 - town_pct
     parts = []
-    if town_pct > 0:
+    if town_pct > 0 and seg.town_mi > 0:
         parts.append(
             f'<div style="width:{town_pct}%;background:#d24b4b;color:#fff;'
             'display:flex;flex-direction:column;align-items:center;justify-content:center;'
@@ -138,7 +139,7 @@ def bar_html(seg: RowSegments) -> str:
             f'{seg.town_km:.0f} km</b>'
             f'<small style="font-size:11px;opacity:.9;">({seg.town_l:.1f} L)</small></div>'
         )
-    if out_pct > 0:
+    if out_pct > 0 and seg.out_mi > 0:
         parts.append(
             f'<div style="width:{out_pct}%;background:#c9d2d9;color:#243;'
             'display:flex;flex-direction:column;align-items:center;justify-content:center;'

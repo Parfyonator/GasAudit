@@ -132,6 +132,14 @@ def test_bar_html_pure_town_row_has_no_out_segment():
     assert "out " not in html  # no out-of-town segment label
 
 
+def test_bar_html_zero_total_row_has_no_segments():
+    rates = rates_from_norm(20.0)
+    r = RowInput(label="z", total_mi=0.0, min_highway_mi=0.0, town_mi=0.0)
+    html = bar_html(row_segments(r, "mi", rates))
+    assert "town " not in html and "out " not in html  # no ghost segments
+    assert "0.0 L" in html  # row-total still renders
+
+
 from gasaudit.io import load_rows
 
 
