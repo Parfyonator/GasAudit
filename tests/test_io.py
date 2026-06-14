@@ -59,3 +59,29 @@ def test_example_table_has_row_per_day_and_km(tmp_path):
     assert "d1" in table and "d2" in table
     # km column present: town miles 0..80 -> some km value with 'km' header
     assert "km" in table.lower()
+
+
+import matplotlib
+matplotlib.use("Agg")
+from gasaudit.plots import (
+    plot_row_bands, plot_fuel_vs_town, plot_swing_widths, plot_tolerance_sensitivity,
+)
+
+
+def _analysis():
+    rows = [Row(label="d1", total=100.0, min_highway=20.0),
+            Row(label="d2", total=60.0, min_highway=0.0)]
+    p = Params(start_fuel=40.0, end_fuel=40.0 - 30.2, norm=20.0, end_fuel_tol=0.3)
+    return rows, analyze(rows, p), p
+
+
+def test_all_plots_build_figures():
+    rows, a, p = _analysis()
+    for fig in (
+        plot_row_bands(rows, a),
+        plot_fuel_vs_town(a),
+        plot_swing_widths(rows, a),
+        plot_tolerance_sensitivity(rows, p),
+    ):
+        assert fig is not None
+        assert len(fig.axes) >= 1
