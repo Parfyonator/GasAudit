@@ -33,21 +33,33 @@ Summed over the whole period (`M` = total distance, `T` = total town distance):
 TotalFuel = rate_hwy · M + spread · T
 ```
 
-### The central consequence (the "gotcha")
+### The central consequence (and what it does NOT mean)
 
 `M` is fixed by the odometer. Pinned start/end fuel + refuels fix the period's consumed fuel
 `F = start + refuels − end`. Therefore:
 
 ```
-T_required = (F − rate_hwy · M) / spread        ← a single forced value
+T_required = (F − rate_hwy · M) / spread        ← a single forced total town distance
 ```
 
-- **The reported total expenditure does NOT depend on how town miles are distributed across
-  days** — only on the grand total `T`. With both fuel levels hard-pinned, total expenditure
-  is locked; the only freedom is *which rows* carry the town miles.
-- Total expenditure can move **only** if the end fuel is allowed a rounding tolerance
-  `±tol` liters. That tolerance is the sole source of a real band in total expenditure and in
-  `T_required`.
+This is only the *target*, not the finished job. `T_required` must still be **distributed
+across the rows** — each row's highway ≥ its intercity minimum, each split believable. That
+distribution, its feasibility, and its per-row slack is the core deliverable.
+
+Two facts about that distribution:
+
+- **Among all *valid* distributions the total fuel is identical** (= the pinned `F`). The
+  row-by-row split therefore cannot nudge the total — the total is fixed the instant both fuel
+  levels are pinned. The split governs **per-row plausibility**, not the total. (Total can move
+  only via an end-fuel rounding tolerance `±tol`, which opens a band on `T_required`.)
+- **The per-row minimums bound the whole feasible region**, so they matter for the total too —
+  through feasibility, not free choice:
+  ```
+  T ∈ [ Σ min_town_i , M − Σ min_highway_i ]      ← feasible town-distance window
+  fuel ∈ [ rate_hwy·M + spread·Σmin_town ,  rate_hwy·M + spread·(M − Σmin_highway) ]
+  ```
+  If `T_required` falls outside that window the report is **infeasible** (routes force too much
+  cheap highway, or not enough), and the tool reports by how much and which rows bind.
 
 ## Units
 
@@ -99,30 +111,47 @@ A distribution `{t_i}` is **valid** iff every `t_i` is in its band AND `Σ t_i =
 5. **A concrete valid distribution:** one example split (e.g. proportional fill) that satisfies
    all constraints, to drop straight into a report — emitted as a small table (miles + km).
 
-## Visualisations (matplotlib → PNG in `output/`)
+## Interactive tool (primary interface)
+
+A **Streamlit app** (`app.py`, run via `streamlit run app.py`) on top of the shared `model.py`:
+
+- Sidebar: period parameters (start/end fuel, refuels, norm, unit, uplift, tolerance).
+- A row per day with a **town/highway slider** bounded to `[min_town_i, m_i − min_highway_i]`.
+- Live readouts: current total town distance vs `T_required`, current implied **end fuel** vs
+  the pinned target (with the `±tol` band), and a per-row validity indicator.
+- A **"snap to target"** button that fills a valid distribution hitting `T_required` (or reports
+  infeasibility), so the user can start from a consistent state and then hand-tune.
+- The same plots as below, re-rendered live.
+
+The app is a thin front-end; all computation stays in `model.py` so the math is identical to
+the static/CLI path and remains unit-tested.
+
+## Visualisations (matplotlib; shown live in the app and exported as PNG to `output/`)
 
 - **Per-row feasible band** floating-bar chart: for each day, full bar = total miles, shaded
-  segment = town swing room `[t_i_lo, t_i_hi]`, marker = the example distribution's value.
-- **Total-fuel vs total-town-share** line: fuel as a function of `T` from 0…M, with `T_required`
-  and the tolerance band marked — shows directly how little (or much) the total can move.
+  segment = town swing room `[t_i_lo, t_i_hi]`, marker = the current/example value.
+- **Total-fuel vs total-town-share** line: fuel as a function of `T` from 0…M, with `T_required`,
+  the feasible window, and the tolerance band marked — shows how much the total can move.
 - **Swing-room bar chart:** per-row wiggle width, sorted — shows where the flexibility is.
 - **Tolerance sensitivity:** total-town-distance band width vs `end_fuel_tol`.
 
 ## Components
 
 - `gasaudit/model.py` — pure functions: rates from norm/uplift, `total_fuel(M, T)`,
-  `t_required(F, M, rates)`, per-row bands, swing room, example distribution. No I/O. Unit-testable.
+  `t_required(F, M, rates)`, per-row bands, swing room, feasibility, example distribution.
+  No I/O. Unit-testable.
 - `gasaudit/io.py` — parse the CSV (handle the messy header/footer rows) into clean per-row
   records; unit conversion helpers (mi↔km).
 - `gasaudit/report.py` — assemble the textual summary and the example-distribution table.
-- `gasaudit/plots.py` — the four charts.
-- `main.py` — wire it together: load config + CSV, run analysis, print summary, write plots.
+- `gasaudit/plots.py` — the four charts (return matplotlib figures, usable by app + CLI).
+- `app.py` — Streamlit interactive front-end (primary interface).
+- `main.py` — CLI/static path: load config + CSV, run analysis, print summary, write plots.
 - `config.toml` (or CLI args) — the period parameters above.
 - `tests/` — unit tests for `model.py` (the math) and `io.py` (CSV quirks).
 
 ## Dependencies
 
-`numpy`, `pandas`, `matplotlib` (install into existing `venv`). Python 3.13.
+`numpy`, `pandas`, `matplotlib`, `streamlit` (install into existing `venv`). Python 3.13.
 
 ## Out of scope (for now)
 
