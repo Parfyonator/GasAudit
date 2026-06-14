@@ -30,3 +30,27 @@ def test_required_town_inverts_total_fuel():
     r = rates_from_norm(20.0)
     fuel = total_fuel(r, 100.0, 40.0)
     assert required_town(r, 100.0, fuel) == pytest.approx(40.0)
+
+
+from gasaudit.model import Row, feasible_window
+
+
+def test_row_town_bounds():
+    r = Row(label="d1", total=100.0, min_highway=30.0, min_town=5.0)
+    assert r.town_min == 5.0
+    assert r.town_max == 70.0  # total - min_highway
+
+
+def test_feasible_window_sums_bounds():
+    rows = [
+        Row(label="d1", total=100.0, min_highway=30.0),  # town in [0, 70]
+        Row(label="d2", total=50.0, min_highway=0.0),    # town in [0, 50]
+    ]
+    lo, hi = feasible_window(rows)
+    assert lo == pytest.approx(0.0)
+    assert hi == pytest.approx(120.0)
+
+
+def test_row_rejects_highway_over_total():
+    with pytest.raises(ValueError):
+        Row(label="bad", total=10.0, min_highway=20.0).validate()
