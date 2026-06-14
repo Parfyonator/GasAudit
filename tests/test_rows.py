@@ -2,7 +2,7 @@ import pytest
 from gasaudit.rows import (
     RowInput, to_unit, from_unit, clamp_town,
     RowSegments, row_segments, totals,
-    to_model_rows, add_row, delete_row, move_up, move_down,
+    to_model_rows, add_row, update_row, delete_row, move_up, move_down,
     bar_html,
     computed_table_df, input_csv_df, rows_from_csv,
 )
@@ -112,6 +112,20 @@ def test_move_up_down_and_boundaries():
     assert [r.label for r in rows] == ["c", "a", "b"]
 
 
+def test_update_row_edits_and_reclamps():
+    rows = [RowInput(label="d1", total_mi=100.0, min_highway_mi=20.0, town_mi=70.0)]
+    update_row(rows, 0, "d1-new", 60.0, 50.0)
+    r = rows[0]
+    assert r.label == "d1-new"
+    assert r.total_mi == pytest.approx(60.0)
+    assert r.min_highway_mi == pytest.approx(50.0)
+    assert r.town_mi == pytest.approx(10.0)  # re-clamped to total - min_highway = 10
+    # min_highway clamped to total
+    update_row(rows, 0, "d1-new", 40.0, 999.0)
+    assert rows[0].min_highway_mi == pytest.approx(40.0)
+    assert rows[0].town_mi == pytest.approx(0.0)
+
+
 def test_bar_html_contains_numbers_and_width():
     rates = rates_from_norm(20.0)
     r = RowInput(label="d1", total_mi=127.0, min_highway_mi=80.0, town_mi=47.0)
@@ -120,7 +134,8 @@ def test_bar_html_contains_numbers_and_width():
     assert "47" in html and "80" in html          # town/out miles
     assert "76" in html and "129" in html          # town/out km (rounded)
     assert "width:37" in html or "width: 37" in html  # town_frac ~0.37 -> 37%
-    assert "24.4" in html                           # total liters rounded
+    assert "(10.8 L)" in html and "(13.6 L)" in html   # per-segment liters
+    assert "width:100%" in html                         # full-width bar
 
 
 def test_bar_html_pure_town_row_has_no_out_segment():
@@ -137,7 +152,7 @@ def test_bar_html_zero_total_row_has_no_segments():
     r = RowInput(label="z", total_mi=0.0, min_highway_mi=0.0, town_mi=0.0)
     html = bar_html(row_segments(r, "mi", rates))
     assert "town " not in html and "out " not in html  # no ghost segments
-    assert "0.0 L" in html  # row-total still renders
+    assert "height:46px" in html  # bar container still renders (empty)
 
 
 from gasaudit.io import load_rows

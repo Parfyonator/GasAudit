@@ -79,38 +79,57 @@ if rows and all(r.min_highway_mi == 0 for r in rows):
     st.info("No per-row highway minimums set — town share can range 0..total each day "
             "(widest window). Add minimums to constrain it.")
 
-# --- add-row modal ---
-@st.dialog("Add row")
-def _add_row_dialog():
-    label = st.text_input("Date", value=f"row {len(rows) + 1}")
-    total = st.number_input(f"Total distance ({unit})", min_value=0.0, value=0.0, step=1.0)
-    minhw = st.number_input(f"Min highway ({unit})", min_value=0.0, value=0.0, step=1.0)
+# --- add / edit row modal (shared form; add when index is None) ---
+def _row_form(index):
+    if index is None:
+        d_label, d_total, d_min = f"row {len(rows) + 1}", 0.0, 0.0
+    else:
+        rr = rows[index]
+        d_label = rr.label
+        d_total = R.to_unit(rr.total_mi, unit)
+        d_min = R.to_unit(rr.min_highway_mi, unit)
+    label = st.text_input("Date", value=d_label)
+    total = st.number_input(f"Total distance ({unit})", min_value=0.0,
+                            value=float(d_total), step=1.0)
+    minhw = st.number_input(f"Min highway ({unit})", min_value=0.0,
+                            value=float(d_min), step=1.0)
     c1, c2 = st.columns(2)
-    if c1.button("Add", type="primary"):
+    if c1.button("Save" if index is not None else "Add", type="primary"):
         if total <= 0:
             st.error("Total must be greater than 0.")
         else:
-            R.add_row(rows, label, R.from_unit(total, unit), R.from_unit(minhw, unit))
+            if index is None:
+                R.add_row(rows, label, R.from_unit(total, unit), R.from_unit(minhw, unit))
+            else:
+                R.update_row(rows, index, label,
+                             R.from_unit(total, unit), R.from_unit(minhw, unit))
             st.rerun()
     if c2.button("Cancel"):
         st.rerun()
 
-# --- snap + add controls ---
+
+@st.dialog("Add row")
+def _add_row_dialog():
+    _row_form(None)
+
+
+@st.dialog("Edit row")
+def _edit_row_dialog(index):
+    _row_form(index)
+
+# --- snap control ---
 st.subheader("Per-row town / out-of-town split")
-cc1, cc2 = st.columns(2)
-if cc1.button("Snap to target") and a.example is not None:
+if st.button("Snap to target") and a.example is not None:
     for r, ex in zip(rows, a.example):
         r.town_mi = R.from_unit(ex, unit)
         R.clamp_town(r)
     st.rerun()
-if cc2.button("➕ Add row"):
-    _add_row_dialog()
 
 # --- per-row blocks ---
 # Widget keys use id(r) (stable per row object across reruns) so slider state stays
 # bound to the right row after delete / reorder — index-based keys would go stale.
 for i, r in enumerate(rows):
-    c_del, c_mv, c_main = st.columns([0.06, 0.06, 0.88])
+    c_del, c_mv, c_main, c_total, c_edit = st.columns([0.05, 0.05, 0.72, 0.1, 0.08])
     if c_del.button(":material/delete:", key=f"del{id(r)}", help="Delete row"):
         R.delete_row(rows, i)
         st.rerun()
@@ -120,14 +139,17 @@ for i, r in enumerate(rows):
     if c_mv.button("▼", key=f"down{id(r)}", help="Move down"):
         R.move_down(rows, i)
         st.rerun()
+    if c_edit.button(":material/edit:", key=f"edit{id(r)}", help="Edit row"):
+        _edit_row_dialog(i)
     with c_main:
         st.caption(
             f"{r.label} · total {R.to_unit(r.total_mi, unit):.0f} {unit} "
             f"({r.total_mi * R.MI_TO_KM:.0f} km) · min highway "
             f"{R.to_unit(r.min_highway_mi, unit):.0f} {unit}"
         )
-        seg = R.row_segments(r, unit, rates)
-        st.markdown(R.bar_html(seg), unsafe_allow_html=True)
+        # Reserve the bar's spot ABOVE the slider, but fill it AFTER reading the slider
+        # so it reflects the new value on the same rerun (no extra click needed).
+        bar_slot = st.empty()
         town_max = R.to_unit(r.total_mi - r.min_highway_mi, unit)
         if town_max <= 1e-9:
             st.caption("town fixed at 0 — no wiggle room")
@@ -140,6 +162,13 @@ for i, r in enumerate(rows):
                 key=f"town{id(r)}", label_visibility="collapsed",
             )
             r.town_mi = R.from_unit(val, unit)
+        seg = R.row_segments(r, unit, rates)
+        bar_slot.markdown(R.bar_html(seg), unsafe_allow_html=True)
+    c_total.markdown(f"**{seg.total_l:.1f} L**")
+
+# --- add row (below the rows) ---
+if st.button("➕ Add row"):
+    _add_row_dialog()
 
 # --- totals table ---
 t = R.totals(rows, unit, rates)

@@ -107,6 +107,18 @@ def add_row(rows: list[RowInput], label: str, total_mi: float,
     return rows
 
 
+def update_row(rows: list[RowInput], i: int, label: str, total_mi: float,
+               min_highway_mi: float) -> list[RowInput]:
+    """Edit an existing row's label/total/min in place; re-clamp min and town."""
+    if 0 <= i < len(rows):
+        r = rows[i]
+        r.label = label
+        r.total_mi = total_mi
+        r.min_highway_mi = min(min_highway_mi, total_mi)
+        clamp_town(r)
+    return rows
+
+
 def delete_row(rows: list[RowInput], i: int) -> list[RowInput]:
     if 0 <= i < len(rows):
         del rows[i]
@@ -126,7 +138,11 @@ def move_down(rows: list[RowInput], i: int) -> list[RowInput]:
 
 
 def bar_html(seg: RowSegments) -> str:
-    """Labeled two-segment bar (red town, grey out) + row-total liters, as inline-styled HTML."""
+    """Full-width labeled two-segment bar (red town, grey out), as inline-styled HTML.
+
+    Bar only — the row-total liters is rendered separately by the app so the bar's width
+    matches the slider beneath it.
+    """
     town_pct = round(seg.town_frac * 100)
     out_pct = 100 - town_pct
     parts = []
@@ -148,14 +164,9 @@ def bar_html(seg: RowSegments) -> str:
             f'{seg.out_km:.0f} km</b>'
             f'<small style="font-size:11px;opacity:.9;">({seg.out_l:.1f} L)</small></div>'
         )
-    bar = (
-        '<div style="display:flex;height:46px;border-radius:6px;overflow:hidden;'
-        'box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);flex:1;">' + "".join(parts) + "</div>"
-    )
     return (
-        '<div style="display:flex;align-items:center;">' + bar +
-        f'<div style="min-width:74px;text-align:right;padding-left:12px;'
-        f'font-weight:700;font-size:15px;">{seg.total_l:.1f} L</div></div>'
+        '<div style="display:flex;height:46px;width:100%;border-radius:6px;overflow:hidden;'
+        'box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);">' + "".join(parts) + "</div>"
     )
 
 
