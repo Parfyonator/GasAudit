@@ -59,7 +59,22 @@ if rows and not st.session_state.get("seeded") and a.example is not None:
     for r, ex in zip(rows, a.example):
         r.town_mi = R.from_unit(ex, unit)
         R.clamp_town(r)
+        st.session_state[f"town{id(r)}"] = float(R.to_unit(r.town_mi, unit))
     st.session_state.seeded = True
+
+# Keep each slider's widget-state (keyed by id(r), stored in the WORKING unit) in sync.
+# Sliders read their value from session_state, so programmatic changes (Snap to target,
+# unit toggle, Edit) actually move the handles — passing value= would be ignored once a
+# keyed widget has state. Seed new rows, rewrite on a mi/km change, and clamp to current
+# bounds (min highway can change via Edit).
+unit_changed = st.session_state.get("prev_unit") != unit
+st.session_state.prev_unit = unit
+for r in rows:
+    k = f"town{id(r)}"
+    town_max_u = R.to_unit(max(r.total_mi - r.min_highway_mi, 0.0), unit)
+    if k not in st.session_state or unit_changed:
+        st.session_state[k] = float(R.to_unit(r.town_mi, unit))
+    st.session_state[k] = float(min(max(st.session_state[k], 0.0), town_max_u))
 
 # red trash-button styling (best-effort: colors any button whose label is the delete icon)
 st.markdown(
@@ -123,6 +138,7 @@ if st.button("Snap to target") and a.example is not None:
     for r, ex in zip(rows, a.example):
         r.town_mi = R.from_unit(ex, unit)
         R.clamp_town(r)
+        st.session_state[f"town{id(r)}"] = float(R.to_unit(r.town_mi, unit))
     st.rerun()
 
 # --- per-row blocks ---
@@ -151,11 +167,10 @@ for i, r in enumerate(rows):
         else:
             # Gap so the slider's floating value bubble sits below the bar, not over it.
             st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-            # On a mi/km toggle, max_value changes, so Streamlit re-IDs the widget and
-            # re-seeds it from value= (canonical miles) — the toggle stays lossless.
+            # Value comes from session_state[key] (seeded/synced above), not value=,
+            # so Snap/unit-toggle/Edit move the handle.
             val = st.slider(
                 "town", min_value=0.0, max_value=float(town_max),
-                value=float(min(R.to_unit(r.town_mi, unit), town_max)),
                 key=f"town{id(r)}", label_visibility="collapsed",
             )
             r.town_mi = R.from_unit(val, unit)
