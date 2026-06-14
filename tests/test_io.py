@@ -1,6 +1,10 @@
 import pytest
 from gasaudit.io import mi_to_km, km_to_mi, load_rows
 
+# SAMPLE has a fabricated 10th field on the 25-May row (value 80) to exercise the
+# "10th field IS present → read min_highway" path. The real production file currently
+# has no 10th field on any row, so all defaults are 0 — tested by
+# test_real_csv_defaults_min_highway_to_zero below.
 SAMPLE = """;Показник спідометра;Залишок пального;;;;;;
 ;175010;63;;;;;;
 ;;;;;;;;
@@ -97,3 +101,9 @@ def test_plots_and_report_survive_infeasible():
     assert "nan" in example_table(rows, a, "mi")
     for fig in (plot_row_bands(rows, a), plot_fuel_vs_town(a), plot_swing_widths(rows, a)):
         assert fig is not None
+
+
+def test_real_csv_defaults_min_highway_to_zero():
+    rows = load_rows("supp_mat/ПАЛИВО_ОБЛІК.csv")
+    assert len(rows) >= 1
+    assert all(r.min_highway == 0.0 for r in rows)

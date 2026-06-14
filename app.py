@@ -45,6 +45,13 @@ else:
     st.error(f"INFEASIBLE — required town {a.town_required:.1f} {unit} outside window "
              f"{a.feasible_window[0]:.0f}…{a.feasible_window[1]:.0f} {unit}")
 
+if all(r.min_highway == 0 for r in rows):
+    st.info(
+        "No per-row highway minimums set (no 10th 'min_highway' field in the CSV). "
+        "Town share can range 0..total each day — widest possible window. "
+        "Add minimums to constrain it."
+    )
+
 # Per-row sliders, seeded from the example split (snap-to-target)
 st.subheader("Per-row town distance")
 snap = st.button("Snap to target")

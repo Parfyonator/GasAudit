@@ -10,8 +10,9 @@ pinned start fuel, end fuel, and refuels stay consistent with the mileage.
 ## Configure
 
 Edit `config.toml` (fuel levels, refuels, norm, unit, tolerance). For any day with forced
-intercity travel, add the minimum highway distance as **column 9** (miles) in the CSV
-`supp_mat/ПАЛИВО_ОБЛІК.csv`; days left blank default to 0 (widest, least-constrained window).
+intercity travel, append one extra `;` field to the END of that CSV row (a 10th field,
+right after the "траса км" column) holding the minimum forced highway distance **in miles**.
+Rows without this extra field default to 0 (widest, least-constrained window).
 
 ## Run
 

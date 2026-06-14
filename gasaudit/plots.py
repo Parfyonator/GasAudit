@@ -32,7 +32,15 @@ def plot_fuel_vs_town(a: Analysis):
     xs = [lo_w + (hi_w - lo_w) * k / 100 for k in range(101)]
     ys = [a.rates.highway * a.total_dist + a.rates.spread * x for x in xs]
     ax.plot(xs, ys, color="#333333")
-    ax.axvline(a.town_required, color="#cc0000", label="required town")
+    span = hi_w - lo_w
+    if lo_w - span * 0.1 <= a.town_required <= hi_w + span * 0.1:
+        ax.axvline(a.town_required, color="#cc0000", label="required town")
+    else:
+        ax.annotate(
+            f"required town {a.town_required:.0f} (off-scale)",
+            xy=(0.5, 0.9), xycoords="axes fraction",
+            ha="center", color="#cc0000",
+        )
     ax.axvspan(a.town_band[0], a.town_band[1], color="#cc0000", alpha=0.15,
                label="tolerance band")
     ax.axvspan(lo_w, hi_w, color="#6fa8dc", alpha=0.1, label="feasible window")

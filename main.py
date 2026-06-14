@@ -30,6 +30,12 @@ def main(config_path: str = "config.toml") -> None:
         uplift=cfg["norm"]["uplift"],
     )
     a = analyze(rows, params)
+    if all(r.min_highway == 0 for r in rows):
+        print(
+            "NOTE: no per-row highway minimums set (CSV has no 10th 'min_highway' "
+            "field), so every day's town share can range 0..total — the feasible "
+            "window is the widest possible. Add minimums to constrain it.\n"
+        )
     print(summary_text(a, work_unit=unit))
     print()
     print(example_table(rows, a, work_unit=unit))
