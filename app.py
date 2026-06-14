@@ -129,18 +129,18 @@ if st.button("Snap to target") and a.example is not None:
 # Widget keys use id(r) (stable per row object across reruns) so slider state stays
 # bound to the right row after delete / reorder — index-based keys would go stale.
 for i, r in enumerate(rows):
-    c_del, c_mv, c_main, c_total, c_edit = st.columns([0.05, 0.05, 0.72, 0.1, 0.08])
+    c_del, c_mv, c_main, c_total = st.columns([0.06, 0.06, 0.78, 0.1])
     if c_del.button(":material/delete:", key=f"del{id(r)}", help="Delete row"):
         R.delete_row(rows, i)
         st.rerun()
+    if c_del.button(":material/edit:", key=f"edit{id(r)}", help="Edit row"):
+        _edit_row_dialog(i)
     if c_mv.button("▲", key=f"up{id(r)}", help="Move up"):
         R.move_up(rows, i)
         st.rerun()
     if c_mv.button("▼", key=f"down{id(r)}", help="Move down"):
         R.move_down(rows, i)
         st.rerun()
-    if c_edit.button(":material/edit:", key=f"edit{id(r)}", help="Edit row"):
-        _edit_row_dialog(i)
     with c_main:
         st.caption(
             f"{r.label} · total {R.to_unit(r.total_mi, unit):.0f} {unit} "
