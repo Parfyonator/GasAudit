@@ -120,3 +120,37 @@ def move_down(rows: list[RowInput], i: int) -> list[RowInput]:
     if 0 <= i < len(rows) - 1:
         rows[i + 1], rows[i] = rows[i], rows[i + 1]
     return rows
+
+
+def bar_html(seg: RowSegments) -> str:
+    """Labeled two-segment bar (red town, grey out) + row-total liters, as inline-styled HTML."""
+    town_pct = round(seg.town_frac * 100)
+    out_pct = 100 - town_pct
+    parts = []
+    if town_pct > 0:
+        parts.append(
+            f'<div style="width:{town_pct}%;background:#d24b4b;color:#fff;'
+            'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+            'line-height:1.2;overflow:hidden;">'
+            f'<b style="font-size:13px;white-space:nowrap;">town {seg.town_mi:.0f} mi · '
+            f'{seg.town_km:.0f} km</b>'
+            f'<small style="font-size:11px;opacity:.9;">({seg.town_l:.1f} L)</small></div>'
+        )
+    if out_pct > 0:
+        parts.append(
+            f'<div style="width:{out_pct}%;background:#c9d2d9;color:#243;'
+            'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+            'line-height:1.2;overflow:hidden;">'
+            f'<b style="font-size:13px;white-space:nowrap;">out {seg.out_mi:.0f} mi · '
+            f'{seg.out_km:.0f} km</b>'
+            f'<small style="font-size:11px;opacity:.9;">({seg.out_l:.1f} L)</small></div>'
+        )
+    bar = (
+        '<div style="display:flex;height:46px;border-radius:6px;overflow:hidden;'
+        'box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);flex:1;">' + "".join(parts) + "</div>"
+    )
+    return (
+        '<div style="display:flex;align-items:center;">' + bar +
+        f'<div style="min-width:74px;text-align:right;padding-left:12px;'
+        f'font-weight:700;font-size:15px;">{seg.total_l:.1f} L</div></div>'
+    )

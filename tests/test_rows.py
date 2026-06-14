@@ -3,6 +3,7 @@ from gasaudit.rows import (
     RowInput, to_unit, from_unit, clamp_town,
     RowSegments, row_segments, totals,
     to_model_rows, add_row, delete_row, move_up, move_down,
+    bar_html,
 )
 
 
@@ -108,3 +109,23 @@ def test_move_up_down_and_boundaries():
     assert [r.label for r in rows] == ["c", "a", "b"]
     move_down(rows, 2) # boundary no-op
     assert [r.label for r in rows] == ["c", "a", "b"]
+
+
+def test_bar_html_contains_numbers_and_width():
+    rates = rates_from_norm(20.0)
+    r = RowInput(label="d1", total_mi=127.0, min_highway_mi=80.0, town_mi=47.0)
+    seg = row_segments(r, "mi", rates)
+    html = bar_html(seg)
+    assert "47" in html and "80" in html          # town/out miles
+    assert "76" in html and "129" in html          # town/out km (rounded)
+    assert "width:37" in html or "width: 37" in html  # town_frac ~0.37 -> 37%
+    assert "24.4" in html                           # total liters rounded
+
+
+def test_bar_html_pure_town_row_has_no_out_segment():
+    rates = rates_from_norm(20.0)
+    r = RowInput(label="d2", total_mi=53.0, min_highway_mi=0.0, town_mi=53.0)
+    seg = row_segments(r, "mi", rates)
+    html = bar_html(seg)
+    assert "width:100" in html or "width: 100" in html
+    assert "out " not in html  # no out-of-town segment label
