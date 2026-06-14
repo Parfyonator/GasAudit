@@ -23,3 +23,13 @@ class Rates:
 def rates_from_norm(norm: float, uplift: float = 0.15) -> Rates:
     base = norm / 100.0
     return Rates(base=base, town=base * (1 + uplift), highway=base * (1 - uplift))
+
+
+def total_fuel(rates: Rates, total_dist: float, town_dist: float) -> float:
+    """Period fuel = highway-rate * total distance + spread * total town distance."""
+    return rates.highway * total_dist + rates.spread * town_dist
+
+
+def required_town(rates: Rates, total_dist: float, fuel: float) -> float:
+    """The total town distance that makes total_fuel equal `fuel`."""
+    return (fuel - rates.highway * total_dist) / rates.spread
