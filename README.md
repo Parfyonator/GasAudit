@@ -19,8 +19,12 @@ Rows without this extra field default to 0 (widest, least-constrained window).
 - Static analysis + plots:  `venv/bin/python main.py`  (writes `output/*.png`)
 - Interactive explorer:      `venv/bin/streamlit run app.py`
 
-In the interactive app, drag each day's town/highway slider and watch the **implied end fuel**
-move toward your pinned target; "Snap to target" fills a valid split for you.
+In the interactive app you can import the CSV or build rows by hand: add rows (➕ opens a
+Date / Total / Min-highway modal), delete (red trash button) or reorder (▲/▼) them, and drag
+each row's slider to set the town / out-of-town split. Each row shows a labeled bar (miles, km,
+litres per segment) and its total litres; the totals table and "implied end fuel" update live.
+"Snap to target" fills a valid split, and the export buttons save the computed table or a
+re-importable input CSV.
 
 ## How it works
 
