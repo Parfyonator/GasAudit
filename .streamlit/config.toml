@@ -1,0 +1,10 @@
+[server]
+# headless = true skips the first-run "Email:" prompt that otherwise
+# blocks the server from starting, and disables auto-opening a browser.
+headless = true
+# Required when running behind the Codespaces / GitHub port-forwarding proxy.
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false
