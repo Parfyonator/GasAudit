@@ -1,0 +1,27 @@
+{
+  "name": "GasAudit (Python 3.13)",
+
+  // Official Microsoft devcontainer image with Python + pip preinstalled.
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
+
+  // Install project dependencies once, after the container is created.
+  "postCreateCommand": "pip3 install -r requirements.txt",
+
+  // Streamlit serves on 8501; forward it so the app opens in the browser.
+  "forwardPorts": [8501],
+  "portsAttributes": {
+    "8501": {
+      "label": "Streamlit",
+      "onAutoForward": "openbrowser"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ]
+    }
+  }
+}
