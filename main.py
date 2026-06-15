@@ -15,11 +15,14 @@ from gasaudit.plots import (
 from gasaudit.report import example_table, summary_text
 
 
-def main(config_path: str = "config.toml") -> None:
+DEFAULT_CSV = "supp_mat/ПАЛИВО_ОБЛІК.csv"
+
+
+def main(config_path: str = "config.toml", csv_path: str = DEFAULT_CSV) -> None:
     with open(config_path, "rb") as fh:
         cfg = tomllib.load(fh)
     unit = cfg["norm"]["unit"]
-    rows = load_rows(cfg["csv_path"], to_unit=unit)
+    rows = load_rows(csv_path, to_unit=unit)
     params = Params(
         start_fuel=cfg["fuel"]["start_fuel"],
         end_fuel=cfg["fuel"]["end_fuel"],
@@ -50,4 +53,12 @@ def main(config_path: str = "config.toml") -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    p = argparse.ArgumentParser(
+        description="Gas-audit static analysis: print summary + write plots to output/.")
+    p.add_argument("csv_path", nargs="?", default=DEFAULT_CSV,
+                   help=f"path to the fuel CSV (default: {DEFAULT_CSV})")
+    p.add_argument("--config", default="config.toml", help="path to config.toml")
+    args = p.parse_args()
+    main(args.config, args.csv_path)

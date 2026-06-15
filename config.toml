@@ -1,5 +1,4 @@
 # Period parameters for the gas-audit analysis.
-csv_path = "supp_mat/ПАЛИВО_ОБЛІК.csv"
 
 [fuel]
 start_fuel = 63.0      # litres at period start

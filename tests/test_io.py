@@ -107,3 +107,35 @@ def test_real_csv_defaults_min_highway_to_zero():
     rows = load_rows("supp_mat/ПАЛИВО_ОБЛІК.csv")
     assert len(rows) >= 1
     assert all(r.min_highway == 0.0 for r in rows)
+
+
+from gasaudit.io import load_rows_from_text
+
+
+def test_load_rows_from_text_matches_load_rows(tmp_path):
+    f = tmp_path / "fuel.csv"
+    f.write_text(SAMPLE, encoding="utf-8")
+    from_path = load_rows(str(f))
+    from_text = load_rows_from_text(SAMPLE)
+    assert [r.label for r in from_text] == [r.label for r in from_path]
+    assert from_text[0].total == pytest.approx(from_path[0].total)
+    assert from_text[0].min_highway == pytest.approx(from_path[0].min_highway)
+
+
+def test_load_rows_from_text_converts_to_km():
+    rows = load_rows_from_text(SAMPLE, to_unit="km")
+    assert rows[0].total == pytest.approx(mi_to_km(127.0))
+
+
+def test_fuel_vs_town_accepts_custom_labels():
+    rows, a, p = _analysis()
+    labels = {
+        "required_town": "RT", "required_town_off": "RT off",
+        "tolerance_band": "TB", "feasible_window": "FW",
+        "xlabel": "X", "ylabel": "Y", "title": "T",
+    }
+    fig = plot_fuel_vs_town(a, labels)
+    ax = fig.axes[0]
+    assert ax.get_xlabel() == "X"
+    assert ax.get_ylabel() == "Y"
+    assert ax.get_title() == "T"

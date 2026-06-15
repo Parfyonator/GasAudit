@@ -25,8 +25,9 @@ def plot_row_bands(rows: list[Row], a: Analysis):
     return fig
 
 
-def plot_fuel_vs_town(a: Analysis):
+def plot_fuel_vs_town(a: Analysis, labels: dict | None = None):
     """Total fuel as a function of total town distance, with target/band/window marked."""
+    L = labels or {}
     fig, ax = plt.subplots(figsize=(8, 5))
     lo_w, hi_w = a.feasible_window
     xs = [lo_w + (hi_w - lo_w) * k / 100 for k in range(101)]
@@ -34,19 +35,22 @@ def plot_fuel_vs_town(a: Analysis):
     ax.plot(xs, ys, color="#333333")
     span = hi_w - lo_w
     if lo_w - span * 0.1 <= a.town_required <= hi_w + span * 0.1:
-        ax.axvline(a.town_required, color="#cc0000", label="required town")
+        ax.axvline(a.town_required, color="#cc0000",
+                   label=L.get("required_town", "required town"))
     else:
         ax.annotate(
-            f"required town {a.town_required:.0f} (off-scale)",
+            L.get("required_town_off",
+                  f"required town {a.town_required:.0f} (off-scale)"),
             xy=(0.5, 0.9), xycoords="axes fraction",
             ha="center", color="#cc0000",
         )
     ax.axvspan(a.town_band[0], a.town_band[1], color="#cc0000", alpha=0.15,
-               label="tolerance band")
-    ax.axvspan(lo_w, hi_w, color="#6fa8dc", alpha=0.1, label="feasible window")
-    ax.set_xlabel("total town distance")
-    ax.set_ylabel("total fuel (L)")
-    ax.set_title("Total fuel vs total town distance")
+               label=L.get("tolerance_band", "tolerance band"))
+    ax.axvspan(lo_w, hi_w, color="#6fa8dc", alpha=0.1,
+               label=L.get("feasible_window", "feasible window"))
+    ax.set_xlabel(L.get("xlabel", "total town distance"))
+    ax.set_ylabel(L.get("ylabel", "total fuel (L)"))
+    ax.set_title(L.get("title", "Total fuel vs total town distance"))
     ax.legend(fontsize=8)
     fig.tight_layout()
     return fig

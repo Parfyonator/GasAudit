@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from gasaudit.io import MI_TO_KM, load_rows
+from gasaudit.io import MI_TO_KM, load_rows, load_rows_from_text
 from gasaudit.model import Rates, Row
 
 
@@ -179,7 +179,7 @@ def rebalance(values: list[float], maxima: list[float], moved_index: int,
     return out
 
 
-def bar_html(seg: RowSegments) -> str:
+def bar_html(seg: RowSegments, town_label: str = "town", out_label: str = "out") -> str:
     """Full-width labeled two-segment bar (red town, grey out), as inline-styled HTML.
 
     Bar only — the row-total liters is rendered separately by the app so the bar's width
@@ -193,7 +193,7 @@ def bar_html(seg: RowSegments) -> str:
             f'<div style="width:{town_pct}%;background:#d24b4b;color:#fff;'
             'display:flex;flex-direction:column;align-items:center;justify-content:center;'
             'line-height:1.2;overflow:hidden;">'
-            f'<b style="font-size:13px;white-space:nowrap;">town {seg.town_mi:.0f} mi · '
+            f'<b style="font-size:13px;white-space:nowrap;">{town_label} {seg.town_mi:.0f} mi · '
             f'{seg.town_km:.0f} km</b>'
             f'<small style="font-size:11px;opacity:.9;">({seg.town_l:.1f} L)</small></div>'
         )
@@ -202,7 +202,7 @@ def bar_html(seg: RowSegments) -> str:
             f'<div style="width:{out_pct}%;background:#c9d2d9;color:#243;'
             'display:flex;flex-direction:column;align-items:center;justify-content:center;'
             'line-height:1.2;overflow:hidden;">'
-            f'<b style="font-size:13px;white-space:nowrap;">out {seg.out_mi:.0f} mi · '
+            f'<b style="font-size:13px;white-space:nowrap;">{out_label} {seg.out_mi:.0f} mi · '
             f'{seg.out_km:.0f} km</b>'
             f'<small style="font-size:11px;opacity:.9;">({seg.out_l:.1f} L)</small></div>'
         )
@@ -215,6 +215,15 @@ def bar_html(seg: RowSegments) -> str:
 def rows_from_csv(path: str) -> list[RowInput]:
     """Seed RowInputs from the CSV (miles); town_mi defaults to 0 (caller re-seeds)."""
     model_rows = load_rows(path, to_unit="mi")
+    return [
+        RowInput(label=m.label, total_mi=m.total, min_highway_mi=m.min_highway, town_mi=0.0)
+        for m in model_rows
+    ]
+
+
+def rows_from_csv_text(text: str) -> list[RowInput]:
+    """Seed RowInputs from an uploaded CSV string (miles); town_mi defaults to 0."""
+    model_rows = load_rows_from_text(text, to_unit="mi")
     return [
         RowInput(label=m.label, total_mi=m.total, min_highway_mi=m.min_highway, town_mi=0.0)
         for m in model_rows
