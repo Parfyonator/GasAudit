@@ -1,15 +1,19 @@
 import matplotlib
 matplotlib.use("Agg")
 from streamlit.testing.v1 import AppTest
+from gasaudit.rows import RowInput
 
 
 def test_app_runs_without_exception():
-    at = AppTest.from_file("app.py", default_timeout=30).run()
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
+    at.run()
     assert not at.exception
 
 
 def test_app_runs_with_empty_rows():
     at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
     at.session_state["rows"] = []
     at.run()
     assert not at.exception
@@ -18,7 +22,10 @@ def test_app_runs_with_empty_rows():
 def test_slider_drag_redraws_bar_same_run():
     # Regression: the bar above the slider must reflect the dragged value on the SAME
     # rerun (it used to lag by one interaction).
-    at = AppTest.from_file("app.py", default_timeout=30).run()
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
+    at.session_state["rows"] = [RowInput(label="day 1", total_mi=200.0, min_highway_mi=0.0)]
+    at.run()
     assert at.slider, "expected at least one per-row town slider"
     at.slider[0].set_value(100.0).run()
     assert not at.exception
@@ -28,7 +35,23 @@ def test_slider_drag_redraws_bar_same_run():
 
 def test_snap_to_target_moves_sliders():
     # Regression: "Snap to target" must move the slider handles, not just the bars.
-    at = AppTest.from_file("app.py", default_timeout=30).run()
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
+    # Pre-seed rows that mirror the real CSV data so the period becomes feasible when
+    # refuels is set to 98 below (total ~604 mi, town_required ~305 mi ∈ window).
+    at.session_state["rows"] = [
+        RowInput(label="25-May", total_mi=127.0, min_highway_mi=0.0),
+        RowInput(label="26-May", total_mi=53.0, min_highway_mi=0.0),
+        RowInput(label="27-May", total_mi=66.0, min_highway_mi=0.0),
+        RowInput(label="28-May", total_mi=42.0, min_highway_mi=0.0),
+        RowInput(label="29-May", total_mi=31.0, min_highway_mi=0.0),
+        RowInput(label="30-May", total_mi=100.0, min_highway_mi=0.0),
+        RowInput(label="1-Jun", total_mi=33.0, min_highway_mi=0.0),
+        RowInput(label="2-Jun", total_mi=9.0, min_highway_mi=0.0),
+        RowInput(label="3-Jun", total_mi=81.0, min_highway_mi=0.0),
+        RowInput(label="4-Jun", total_mi=62.0, min_highway_mi=0.0),
+    ]
+    at.run()
     # Make the period feasible so an example split exists (default config is infeasible).
     for ni in at.number_input:
         if ni.label and "Refuels" in ni.label:
@@ -46,7 +69,13 @@ def test_snap_to_target_moves_sliders():
 
 
 def test_lock_total_keeps_sum_constant_when_one_slider_moves():
-    at = AppTest.from_file("app.py", default_timeout=30).run()
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
+    at.session_state["rows"] = [
+        RowInput(label="day 1", total_mi=200.0, min_highway_mi=0.0),
+        RowInput(label="day 2", total_mi=200.0, min_highway_mi=0.0),
+    ]
+    at.run()
     for ni in at.number_input:
         if ni.label and "Refuels" in ni.label:
             ni.set_value(98.0)  # make feasible so sliders auto-seed to a real split
