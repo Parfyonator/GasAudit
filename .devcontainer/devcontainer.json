@@ -7,6 +7,11 @@
   // Install project dependencies once, after the container is created.
   "postCreateCommand": "pip3 install -r requirements.txt",
 
+  // Start the Streamlit app each time you open the Codespace, unless it is
+  // already running. Backgrounded so it doesn't block attach; logs to a file.
+  // The [s] bracket trick stops pgrep from matching its own command line.
+  "postAttachCommand": "pgrep -f '[s]treamlit run app.py' > /dev/null || nohup streamlit run app.py > /tmp/streamlit.log 2>&1 &",
+
   // Streamlit serves on 8501; forward it so the app opens in the browser.
   "forwardPorts": [8501],
   "portsAttributes": {
