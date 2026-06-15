@@ -125,3 +125,17 @@ def test_load_rows_from_text_matches_load_rows(tmp_path):
 def test_load_rows_from_text_converts_to_km():
     rows = load_rows_from_text(SAMPLE, to_unit="km")
     assert rows[0].total == pytest.approx(mi_to_km(127.0))
+
+
+def test_fuel_vs_town_accepts_custom_labels():
+    rows, a, p = _analysis()
+    labels = {
+        "required_town": "RT", "required_town_off": "RT off",
+        "tolerance_band": "TB", "feasible_window": "FW",
+        "xlabel": "X", "ylabel": "Y", "title": "T",
+    }
+    fig = plot_fuel_vs_town(a, labels)
+    ax = fig.axes[0]
+    assert ax.get_xlabel() == "X"
+    assert ax.get_ylabel() == "Y"
+    assert ax.get_title() == "T"
