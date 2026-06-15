@@ -4,7 +4,7 @@ from gasaudit.rows import (
     RowSegments, row_segments, totals,
     to_model_rows, add_row, update_row, delete_row, move_up, move_down, rebalance,
     bar_html,
-    computed_table_df, input_csv_df, rows_from_csv,
+    computed_table_df, input_csv_df, rows_from_csv, rows_from_csv_text,
 )
 
 
@@ -244,3 +244,18 @@ def test_rows_from_csv_reads_real_file():
     assert all(isinstance(r, RowInput) for r in rows)
     assert rows[0].total_mi == pytest.approx(127.0)
     assert all(r.town_mi == 0.0 for r in rows)  # seeded 0; app re-seeds to example
+
+
+_CSV_TEXT = (
+    ";Показник;Залишок;;;;;;\n"
+    "25-May;175010;175137;127;route;47;80;76;129;80\n"
+    "26-May;175137;175190;53;ПТД;53;;85;0\n"
+)
+
+
+def test_rows_from_csv_text_seeds_rowinputs():
+    rows = rows_from_csv_text(_CSV_TEXT)
+    assert [r.label for r in rows] == ["25-May", "26-May"]
+    assert rows[0].total_mi == pytest.approx(127.0)
+    assert rows[0].min_highway_mi == pytest.approx(80.0)
+    assert rows[0].town_mi == 0.0  # caller re-seeds the split

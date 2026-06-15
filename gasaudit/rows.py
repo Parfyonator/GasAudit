@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from gasaudit.io import MI_TO_KM, load_rows
+from gasaudit.io import MI_TO_KM, load_rows, load_rows_from_text
 from gasaudit.model import Rates, Row
 
 
@@ -215,6 +215,15 @@ def bar_html(seg: RowSegments) -> str:
 def rows_from_csv(path: str) -> list[RowInput]:
     """Seed RowInputs from the CSV (miles); town_mi defaults to 0 (caller re-seeds)."""
     model_rows = load_rows(path, to_unit="mi")
+    return [
+        RowInput(label=m.label, total_mi=m.total, min_highway_mi=m.min_highway, town_mi=0.0)
+        for m in model_rows
+    ]
+
+
+def rows_from_csv_text(text: str) -> list[RowInput]:
+    """Seed RowInputs from an uploaded CSV string (miles); town_mi defaults to 0."""
+    model_rows = load_rows_from_text(text, to_unit="mi")
     return [
         RowInput(label=m.label, total_mi=m.total, min_highway_mi=m.min_highway, town_mi=0.0)
         for m in model_rows
