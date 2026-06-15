@@ -29,7 +29,7 @@ with st.sidebar:
     uploaded = st.file_uploader(_("upload_csv"), type=["csv"])
     if uploaded is not None and st.session_state.get("uploaded_id") != uploaded.file_id:
         try:
-            text = uploaded.getvalue().decode("utf-8")
+            text = uploaded.getvalue().decode("utf-8-sig")  # -sig strips Excel's BOM
             st.session_state.rows = R.rows_from_csv_text(text)
             st.session_state.uploaded_id = uploaded.file_id
             st.session_state.pop("seeded", None)

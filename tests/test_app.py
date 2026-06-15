@@ -78,13 +78,18 @@ def test_lock_total_keeps_sum_constant_when_one_slider_moves():
     at.run()
     for ni in at.number_input:
         if ni.label and "Refuels" in ni.label:
-            ni.set_value(98.0)  # make feasible so sliders auto-seed to a real split
+            # 60 keeps the 400 mi period feasible (needed 83 L within the 68..92 L band),
+            # so town_required ~250 mi seeds both sliders to a non-zero split. With the old
+            # 98 the period was infeasible, sliders stayed at 0, and the lock assertion
+            # passed vacuously (0 -> 0) without ever exercising the rebalance.
+            ni.set_value(60.0)
     at.run()
     for tg in at.toggle:
         if tg.label and "Lock" in tg.label:
             tg.set_value(True)
     at.run()
     before = sum(s.value for s in at.slider)
+    assert before > 0, "sliders should seed to a non-zero split for a meaningful lock test"
     s0 = at.slider[0]
     s0.set_value(min(s0.value + 30.0, s0.max)).run()
     assert not at.exception
