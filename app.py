@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tomllib
+from datetime import date, datetime
 
 import streamlit as st
 
@@ -11,9 +12,11 @@ from gasaudit.i18n import translator
 from gasaudit import rows as R
 
 # Language is resolved from session_state BEFORE set_page_config (which must be the first
-# Streamlit call). The sidebar segmented control writes session_state["lang"]; its change
-# triggers a rerun, so the title/text pick up the new language on the next run.
-lang = st.session_state.get("lang") or "UK"
+# Streamlit call). Seed the default here so the sidebar segmented control shows "UK"
+# selected on first load — a keyed control with no pre-set value renders unselected.
+if "lang" not in st.session_state:
+    st.session_state["lang"] = "UK"
+lang = st.session_state["lang"] or "UK"
 _ = translator(lang)
 
 st.set_page_config(page_title=_("page_title"), layout="wide")
@@ -102,15 +105,27 @@ if rows and all(r.min_highway_mi == 0 for r in rows):
     st.info(_("no_min_highway"))
 
 # --- add / edit row modal (shared form; add when index is None) ---
+def _parse_date(label):
+    """Best-effort parse of a row's date label into a date for the picker (today on miss).
+    Handles ISO (2026-06-15) and the CSV's day-month labels (25-May), which carry no year."""
+    for fmt in ("%Y-%m-%d", "%d-%b", "%d-%B"):
+        try:
+            d = datetime.strptime(str(label), fmt).date()
+            return d if fmt == "%Y-%m-%d" else d.replace(year=date.today().year)
+        except ValueError:
+            continue
+    return date.today()
+
+
 def _row_form(index):
     if index is None:
-        d_label, d_total, d_min = f"row {len(rows) + 1}", 0.0, 0.0
+        d_date, d_total, d_min = date.today(), 0.0, 0.0
     else:
         rr = rows[index]
-        d_label = rr.label
+        d_date = _parse_date(rr.label)
         d_total = R.to_unit(rr.total_mi, unit)
         d_min = R.to_unit(rr.min_highway_mi, unit)
-    label = st.text_input(_("date"), value=d_label)
+    label = st.date_input(_("date"), value=d_date).isoformat()
     total = st.number_input(_("total_dist", unit=unit), min_value=0.0,
                             value=float(d_total), step=1.0)
     minhw = st.number_input(_("min_highway", unit=unit), min_value=0.0,
@@ -195,18 +210,23 @@ for i, r in enumerate(rows):
         # so it reflects the new value on the same rerun (no extra click needed).
         bar_slot = st.empty()
         town_max = R.to_unit(r.total_mi - r.min_highway_mi, unit)
+        total_u = R.to_unit(r.total_mi, unit)
         if town_max <= 1e-9:
             st.caption(_("town_fixed"))
         else:
             # Gap so the slider's floating value bubble sits below the bar, not over it.
             st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-            # Value comes from session_state[key] (seeded/synced above), not value=,
-            # so Snap/unit-toggle/Edit move the handle.
+            # Track spans the FULL total so the handle lines up with the town/out boundary
+            # in the bar above. The handle can't pass town_max (= total - min highway):
+            # session_state is clamped to town_max each rerun (above), so a drag into the
+            # reserved min-highway zone snaps back. Value comes from session_state[key]
+            # (seeded/synced above), not value=, so Snap/unit-toggle/Edit move the handle.
             val = st.slider(
-                "town", min_value=0.0, max_value=float(town_max),
+                "town", min_value=0.0, max_value=float(total_u),
                 key=f"town{id(r)}", label_visibility="collapsed",
                 on_change=_locked_rebalance, args=(id(r),),
             )
+            val = min(val, town_max)  # guard the same-run bar before the next rerun clamps
             r.town_mi = R.from_unit(val, unit)
         seg = R.row_segments(r, unit, rates)
         bar_slot.markdown(R.bar_html(seg, _("bar_town"), _("bar_out")),

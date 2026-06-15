@@ -33,6 +33,22 @@ def test_slider_drag_redraws_bar_same_run():
         "bar did not redraw to the new slider value in the same run"
 
 
+def test_min_highway_caps_slider_to_total_minus_min():
+    # The slider track spans the full total (so the handle aligns with the bar's town/out
+    # edge), but the value can't exceed total - min_highway: a drag past it snaps back.
+    at = AppTest.from_file("app.py", default_timeout=30)
+    at.session_state["lang"] = "EN"
+    at.session_state["rows"] = [RowInput(label="day 1", total_mi=200.0, min_highway_mi=50.0)]
+    at.run()
+    assert at.slider, "expected a town slider"
+    assert at.slider[0].max == 200.0, "track should span the full total, not total - min"
+    at.slider[0].set_value(180.0).run()  # try to slide into the reserved min-highway zone
+    assert not at.exception
+    assert at.slider[0].value == 150.0, "value should clamp to total - min_highway"
+    assert any("town 150 mi" in m.value for m in at.markdown), \
+        "bar should show the clamped town distance"
+
+
 def test_snap_to_target_moves_sliders():
     # Regression: "Snap to target" must move the slider handles, not just the bars.
     at = AppTest.from_file("app.py", default_timeout=30)
